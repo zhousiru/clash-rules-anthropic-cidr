@@ -1,16 +1,37 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { isIP } from 'node:net'
 import { dirname } from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
 
 const LLMS_INDEX_URL = 'https://platform.claude.com/llms.txt'
 const SOURCE_FILE = new URL('../source.json', import.meta.url)
+const MAX_FETCH_ATTEMPTS = 5
+const RETRY_BASE_DELAY_MS = 5_000
 
 async function fetchText(url: string) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
-  if (!res.ok) {
-    throw new Error(`${url}: HTTP ${res.status}`)
+  for (let attempt = 1; ; attempt++) {
+    let failure: unknown
+    let retryable = true
+
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
+      if (res.ok) {
+        return await res.text()
+      }
+      failure = new Error(`${url}: HTTP ${res.status}`)
+      retryable = res.status === 429 || res.status >= 500
+    } catch (error) {
+      failure = error
+    }
+
+    if (!retryable || attempt === MAX_FETCH_ATTEMPTS) {
+      throw failure
+    }
+
+    const delayMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1)
+    console.warn(`Retrying in ${delayMs}ms: ${failure}`)
+    await sleep(delayMs)
   }
-  return res.text()
 }
 
 function isCidr(value: string) {
