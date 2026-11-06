@@ -35,6 +35,4 @@ rules:
 
 ## 数据源
 
-文档地址记录在 `source.json`。该地址失效或解析失败时，脚本会从 [llms.txt](https://platform.claude.com/llms.txt) 查找新地址，校验通过后由 Action 提交回 `source.json`。
-
-生成失败时 Action 会调用 Codex 修复，重新生成成功后直接提交到 `main` 并发布，需要配置 `OPENAI_API_KEY` Secret。修复后仍失败时 Action 报错，`dist` 分支保持上一份规则不变。
+文档地址记录在 `source.json`。生成失败时 Action 会调用 Codex 修复，页面搬家时由它从 [llms.txt](https://platform.claude.com/llms.txt) 查找新地址。重新生成成功后直接提交到 `main` 并发布，需要配置 `OPENAI_API_KEY` Secret。修复后仍失败时 Action 报错，`dist` 分支保持上一份规则不变。

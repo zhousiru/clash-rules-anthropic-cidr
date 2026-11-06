@@ -3,7 +3,6 @@ import { isIP } from 'node:net'
 import { dirname } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-const LLMS_INDEX_URL = 'https://platform.claude.com/llms.txt'
 const SOURCE_FILE = new URL('../source.json', import.meta.url)
 const MAX_FETCH_ATTEMPTS = 5
 const RETRY_BASE_DELAY_MS = 5_000
@@ -77,42 +76,8 @@ function parseInboundCidrs(markdown: string) {
   return [...cidrs]
 }
 
-async function discoverCandidateUrls() {
-  const index = await fetchText(LLMS_INDEX_URL)
-  const links = index.matchAll(
-    /\[([^\]]+)\]\((https:\/\/platform\.claude\.com\/[^)\s]+\.md)\)/g,
-  )
-  return [...links]
-    .filter(([, title, url]) => /\bip\b/i.test(`${title} ${url}`))
-    .map(([, , url]) => url)
-}
-
-async function loadCidrs() {
-  const source: { url: string } = JSON.parse(readFileSync(SOURCE_FILE, 'utf8'))
-
-  try {
-    return parseInboundCidrs(await fetchText(source.url))
-  } catch (error) {
-    console.warn(`Source failed, checking ${LLMS_INDEX_URL}: ${error}`)
-  }
-
-  for (const url of await discoverCandidateUrls()) {
-    try {
-      const cidrs = parseInboundCidrs(await fetchText(url))
-      if (url !== source.url) {
-        writeFileSync(SOURCE_FILE, `${JSON.stringify({ url }, null, 2)}\n`)
-        console.log(`Source URL updated: ${source.url} -> ${url}`)
-      }
-      return cidrs
-    } catch (error) {
-      console.warn(`Skipping candidate ${url}: ${error}`)
-    }
-  }
-
-  throw new Error(`No usable IP addresses page found in ${LLMS_INDEX_URL}`)
-}
-
-const cidrs = await loadCidrs()
+const source: { url: string } = JSON.parse(readFileSync(SOURCE_FILE, 'utf8'))
+const cidrs = parseInboundCidrs(await fetchText(source.url))
 
 let ruleSetFile = 'payload:\n'
 
