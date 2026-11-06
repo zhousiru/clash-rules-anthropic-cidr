@@ -50,7 +50,9 @@ jobs:
 
       - name: Regenerate rule set
         if: steps.generate.outcome == 'failure'
-        run: pnpm generate
+        run: |
+          pnpm generate
+          echo "::warning::Generation failed and recovered after Codex ran"
 
       - name: Commit changes
         run: |
